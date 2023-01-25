@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     STATE_ALARM_ARMED_AWAY,
     STATE_ALARM_ARMED_HOME,
+    STATE_ALARM_ARMED_NIGHT,
     STATE_ALARM_ARMING,
     STATE_ALARM_DISARMED,
     STATE_ALARM_PENDING,
@@ -39,9 +40,10 @@ class HomelyAlarm(alarm.AlarmControlPanelEntity):
     _attr_code_arm_required = True
     _attr_has_entity_name = True
     _attr_supported_features = (
-        AlarmControlPanelEntityFeature.ARM_HOME
-        | AlarmControlPanelEntityFeature.ARM_AWAY
-        | AlarmControlPanelEntityFeature.ARM_NIGHT
+        AlarmControlPanelEntityFeature(0)
+        # AlarmControlPanelEntityFeature.ARM_HOME
+        # | AlarmControlPanelEntityFeature.ARM_AWAY
+        # | AlarmControlPanelEntityFeature.ARM_NIGHT
     )
 
     def __init__(
@@ -51,6 +53,7 @@ class HomelyAlarm(alarm.AlarmControlPanelEntity):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__()
         self.coordinator = coordinator
+        self.coordinator.alarm_entity = self
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -64,13 +67,16 @@ class HomelyAlarm(alarm.AlarmControlPanelEntity):
             return STATE_ALARM_DISARMED
         if self.coordinator.location.alarm_state == AlarmStates.ARMED_AWAY.value:
             return STATE_ALARM_ARMED_AWAY
-        if self.coordinator.location.alarm_state == AlarmStates.ARMED_PARTLY.value:
+        if self.coordinator.location.alarm_state == AlarmStates.ARMED_STAY.value:
             return STATE_ALARM_ARMED_HOME
+        if self.coordinator.location.alarm_state == AlarmStates.ARMED_NIGHT.value:
+            return STATE_ALARM_ARMED_NIGHT
         if self.coordinator.location.alarm_state in (
-            AlarmStates.ALARM_STAY_PENDING.value,
-            AlarmStates.ARMED_AWAY_PENDING.value,
-            AlarmStates.ARMED_NIGHT_PENDING.value,
+            AlarmStates.ARM_STAY_PENDING.value,
+            AlarmStates.ARM_PENDING.value,
+            AlarmStates.ARM_NIGHT_PENDING.value,
         ):
+            print("Alarm arming")
             return STATE_ALARM_ARMING
         if self.coordinator.location.alarm_state == AlarmStates.ALARM_PENDING.value:
             return STATE_ALARM_PENDING
