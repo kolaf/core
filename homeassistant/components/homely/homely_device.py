@@ -3,7 +3,7 @@ import logging
 
 from homelypy.devices import Device
 
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import DOMAIN
 
@@ -17,6 +17,7 @@ class HomelyDevice:
         """Set up data properties."""
         self._device_id = device_id
         self._device: Device
+        self.entities: list[Entity] = []
 
     def update(self, device: Device) -> None:
         """Update device information from Homely."""

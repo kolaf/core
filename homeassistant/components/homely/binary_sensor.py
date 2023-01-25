@@ -81,6 +81,7 @@ class HomelyBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
         self.homely_device = homely_device
+        homely_device.entities.append(self)
         self.entity_description = description
         self._homely_device_state: Device = self.get_homely_device_state()
         self._attr_device_info = homely_device.device_info

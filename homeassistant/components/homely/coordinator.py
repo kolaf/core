@@ -1,9 +1,11 @@
 """Coordinator for the Homely service."""
 from datetime import timedelta
 import logging
+from threading import Thread
 
-from homelypy.devices import SingleLocation
+from homelypy.devices import Device, SingleLocation
 from homelypy.homely import ConnectionFailedException, Homely
+from homelypy.states import State
 from requests import ConnectTimeout, HTTPError
 
 from homeassistant.config_entries import ConfigEntry
@@ -34,6 +36,13 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
         self.homely: Homely = None
         self.devices: dict[str, HomelyDevice] = {}
 
+    def websocket_callback(self, device: Device, states: list[State]):
+        """Update devices that are received through web socket streaming."""
+        print(f"Received update {device}")
+        self.devices[device.id].update(device)
+        for entity in self.devices[device.id].entities:
+            entity.schedule_update_ha_state(force_refresh=True)
+
     async def setup(self) -> None:
         """Perform initial setup."""
         self.homely = Homely(self.username, self.password)
@@ -43,6 +52,10 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
             )
         except (ConnectionFailedException, ConnectTimeout, HTTPError) as ex:
             raise ConfigEntryNotReady(f"Unable to connect to Homely: {ex}") from ex
+        Thread(
+            target=self.homely.run_socket_io,
+            args=[self.location, self.websocket_callback],
+        ).start()
         await self.update_devices()
 
     async def update_devices(self) -> None:
