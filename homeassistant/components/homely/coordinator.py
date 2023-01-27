@@ -44,7 +44,7 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
     ):
         """Update devices that are received through web socket streaming."""
         if device is not None:
-            print(f"Received update {device}")
+            _LOGGER.debug("Received update %s", device)
             self.devices[device.id].update(device)
             for entity in self.devices[device.id].entities:
                 entity.schedule_update_ha_state(force_refresh=True)
@@ -52,6 +52,7 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
             # If the single_location is updated it means that we have received an alarm state change.
             # The SingleLocation object is updated by the homelypy library, so we only need to trigger the entity to read the new data
             if self.alarm_entity:
+                _LOGGER.debug("Received update for alarm state")
                 self.location.alarm_state = single_location.alarm_state
                 self.location.alarm_state_last_updated = (
                     single_location.alarm_state_last_updated
