@@ -3,7 +3,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 
-from homelypy.devices import Device, MotionSensorMini, SmokeAlarm, WindowSensor
+from homelypy.devices import (
+    Device,
+    HeatAlarm,
+    MotionSensorMini,
+    SmokeAlarm,
+    WindowSensor,
+)
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -43,6 +49,12 @@ async def async_setup_entry(
             entities.append(
                 HomelyBinarySensorEntity(
                     homely_home, homely_device, SMOKE_ALARM_DESCRIPTION
+                )
+            )
+        elif isinstance(homely_device.homely_api_device, HeatAlarm):
+            entities.append(
+                HomelyBinarySensorEntity(
+                    homely_home, homely_device, HEAT_ALARM_DESCRIPTION
                 )
             )
         elif isinstance(homely_device.homely_api_device, MotionSensorMini):
@@ -125,6 +137,12 @@ SMOKE_ALARM_DESCRIPTION = HomelyBinarySensorEntityDescription(
     key="SmokeAlarmAlarm",
     name="Smoke",
     device_class=BinarySensorDeviceClass.SMOKE,
+    value_fn=lambda device: device.alarm.fire,
+)
+HEAT_ALARM_DESCRIPTION = HomelyBinarySensorEntityDescription(
+    key="HeatAlarmAlarm",
+    name="Heat",
+    device_class=BinarySensorDeviceClass.HEAT,
     value_fn=lambda device: device.alarm.fire,
 )
 BATTERY_SENSOR_DESCRIPTION = HomelyBinarySensorEntityDescription(

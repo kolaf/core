@@ -18,6 +18,8 @@ from .homely_device import HomelyDevice
 
 _LOGGER = logging.getLogger(__name__)
 
+MAXIMUM_CONTIGUOUS_CONNECTION_ERRORS = 2
+
 
 class HomelyHomeCoordinator(DataUpdateCoordinator):
     """A Homely location."""
@@ -38,6 +40,7 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
         self.location: SingleLocation = None
         self.homely: Homely = None
         self.devices: dict[str, HomelyDevice] = {}
+        self.contiguous_connection_errors: int = 0
 
     def websocket_callback(
         self, single_location: SingleLocation, device: Device, states: list[State]
@@ -81,6 +84,25 @@ class HomelyHomeCoordinator(DataUpdateCoordinator):
             self.devices[device.id].update(device)
 
     async def _async_update_data(self) -> None:
-        self.location = await self.hass.async_add_executor_job(
-            self.homely.get_location, self.location.location_id
-        )
+        try:
+            self.location = await self.hass.async_add_executor_job(
+                self.homely.get_location, self.location.location_id
+            )
+            self.contiguous_connection_errors = 0
+        except ConnectionError:
+            # The API can be a bit flaky, but we are probably still connected to the websocket.
+            # We therefore hold back a bit on raising the error until it has happened a few times in a row.
+            self.contiguous_connection_errors += 1
+            _LOGGER.warning(
+                "Error connecting to the Homely API. This is failure number %d in a row, over maximum of %d contiguous errors",
+                self.contiguous_connection_errors,
+                MAXIMUM_CONTIGUOUS_CONNECTION_ERRORS,
+            )
+            if self.contiguous_connection_errors > MAXIMUM_CONTIGUOUS_CONNECTION_ERRORS:
+                _LOGGER.error(
+                    "The number of contiguous errors is too large, raising the exception"
+                )
+                raise
+            _LOGGER.info(
+                "The number of contiguous errors is below the limit, swallowing the error and hope this resolves itself"
+            )
